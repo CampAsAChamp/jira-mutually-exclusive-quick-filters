@@ -1,4 +1,4 @@
-// Popup script for Jira Exclusive Filters extension
+// Popup script for Jira Exclusive Quick Filters extension
 
 document.addEventListener('DOMContentLoaded', async () => {
   const toggle = document.getElementById('mutuallyExclusiveToggle');

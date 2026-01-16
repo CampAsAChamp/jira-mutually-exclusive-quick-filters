@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Jira Exclusive Filters",
+  "name": "Jira Exclusive Quick Filters",
   "version": "1.0.0",
   "description": "Makes Jira quick filters mutually exclusive - clicking one filter automatically deselects all others.",
   "permissions": [
