@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jira Mutually Exclusive Quick Filters</title>
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <div class="container">
     <div class="header">
       <img src="icons/icon-source.svg" alt="Extension Icon" class="header-icon">
       <h1>Jira Mutually Exclusive<br>Quick Filters</h1>
     </div>
-    
+
     <div class="content">
       <div class="setting">
         <label class="toggle-container">
@@ -23,24 +25,26 @@
           </div>
         </label>
       </div>
-      
+
       <div class="description">
         <p>When enabled, clicking a quick filter will automatically deselect all other filters.</p>
       </div>
       <div class="divider"></div>
-      
+
       <div class="custom-urls-section">
         <h2>Custom Jira URLs</h2>
-        <p class="help-text">This extension automatically works on Atlassian Cloud (*.atlassian.net). For self-hosted Jira,
+        <p class="help-text">This extension automatically works on Atlassian Cloud (*.atlassian.net).<br><br>For
+          self-hosted
+          Jira,
           Jira Data Center, or Jira Server, add your Jira URL below (one-time setup).</p>
-      
+
         <div class="url-input-container">
           <input type="text" id="customUrlInput" placeholder="https://jira.yourcompany.com" />
-          <button id="addUrlButton">Add URL</button>
+          <button id="addUrlButton" class="icon-button" title="Add URL">+</button>
         </div>
-      
+
         <div id="urlValidationError" class="validation-error"></div>
-      
+
         <div class="urls-list-container">
           <h3>Configured URLs:</h3>
           <ul id="customUrlsList" class="urls-list">
@@ -50,13 +54,14 @@
         </div>
       </div>
     </div>
-    
+
     <div class="footer">
       <p class="version">v1.0.0</p>
     </div>
   </div>
-  
+
   <div id="toast" class="toast"></div>
   <script src="popup.js"></script>
 </body>
+
 </html>

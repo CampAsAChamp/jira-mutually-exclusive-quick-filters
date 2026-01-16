@@ -72,8 +72,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         urlText.textContent = url;
 
         const removeButton = document.createElement('button');
-        removeButton.className = 'remove-url-button';
-        removeButton.textContent = 'Remove';
+        removeButton.className = 'remove-url-button icon-button';
+        removeButton.textContent = '×';
+        removeButton.title = 'Remove URL';
         removeButton.addEventListener('click', () => removeCustomUrl(index));
 
         li.appendChild(urlText);
