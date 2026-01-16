@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jira Exclusive Filters</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Jira Exclusive Filters</h1>
+    </div>
+    
+    <div class="content">
+      <div class="setting">
+        <label class="toggle-container">
+          <span class="toggle-label">Make quick filters mutually exclusive</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="mutuallyExclusiveToggle" checked>
+            <span class="slider"></span>
+          </div>
+        </label>
+      </div>
+      
+      <div class="description">
+        <p>When enabled, clicking a quick filter will automatically deselect all other filters.</p>
+      </div>
+      
+      <div class="status" id="status"></div>
+    </div>
+    
+    <div class="footer">
+      <p class="version">v1.0.0</p>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
