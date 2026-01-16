@@ -2,8 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
   const toggle = document.getElementById('mutuallyExclusiveToggle');
-  const statusElement = document.getElementById('status');
-  const descriptionElement = document.querySelector('.description');
+  const toastElement = document.getElementById('toast');
   const customUrlInput = document.getElementById('customUrlInput');
   const addUrlButton = document.getElementById('addUrlButton');
   const customUrlsList = document.getElementById('customUrlsList');
@@ -16,9 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     customJiraUrls: []
   });
   toggle.checked = result.mutuallyExclusive;
-  
-  // Update description border on load
-  updateDescriptionBorder(result.mutuallyExclusive);
 
   console.log('Popup loaded, mutuallyExclusive:', result.mutuallyExclusive);
   console.log('Custom Jira URLs:', result.customJiraUrls);
@@ -26,22 +22,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Display custom URLs
   displayCustomUrls(result.customJiraUrls);
   
-  // Function to update description border
-  function updateDescriptionBorder(isEnabled) {
-    if (isEnabled) {
-      descriptionElement.className = 'description enabled';
-    } else {
-      descriptionElement.className = 'description disabled';
-    }
-  }
-
-  // Show status message
+  // Show status message as toast
   function showStatus(message, type = 'success') {
-    statusElement.textContent = message;
-    statusElement.className = `status show ${type}`;
+    toastElement.textContent = message;
+    toastElement.className = `toast show ${type}`;
     
     setTimeout(() => {
-      statusElement.classList.remove('show');
+      toastElement.classList.remove('show');
     }, 2000);
   }
 
@@ -208,10 +195,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     console.log('Toggle changed, mutuallyExclusive:', isEnabled);
     
-    // Update description border
-    updateDescriptionBorder(isEnabled);
-    
-    // Show status message
+    // Show status message as toast
     if (isEnabled) {
       showStatus('✓ Exclusive filters enabled', 'success');
     } else {

@@ -131,43 +131,41 @@ input:focus + .slider {
   background: #f9f9f9;
   border-radius: 6px;
   margin-bottom: 12px;
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-}
-
-.description.enabled {
-  border-color: #28a745;
-}
-
-.description.disabled {
-  border-color: #ffc107;
 }
 
 .description p {
   margin: 0;
 }
 
-.status {
-  font-size: 12px;
-  padding: 8px 12px;
-  border-radius: 4px;
+/* Toast notification (replaces the old status element) */
+.toast {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #333;
+  color: white;
+  padding: 12px 20px;
+  font-size: 13px;
+  line-height: 1.5;
   text-align: center;
-  transition: opacity 0.3s;
-  opacity: 0;
+  transform: translateY(100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 1000;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.status.show {
-  opacity: 1;
+.toast.show {
+  transform: translateY(0);
 }
 
-.status.success {
-  background: #d4edda;
-  color: #155724;
+.toast.success {
+  background: #28a745;
 }
 
-.status.warning {
-  background: #fff3cd;
-  color: #856404;
+.toast.warning {
+  background: #ffc107;
+  color: #333;
 }
 
 .divider {
