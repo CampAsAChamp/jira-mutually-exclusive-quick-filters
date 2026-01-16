@@ -10,57 +10,6 @@ let isProcessingClick = false;
 // Store a Set of initialized DOM element references
 let initializedContainers = new Set();
 
-// Function to clear all active filters
-function clearAllActiveFilters() {
-  console.log('Jira Mutually Exclusive Quick Filters: Clearing all active filters');
-  isProcessingClick = true;
-
-  const activeFilters = document.querySelectorAll('.js-quickfilter-button.ghx-active');
-  console.log(`Jira Mutually Exclusive Quick Filters: Found ${activeFilters.length} active filters to clear`);
-
-  activeFilters.forEach(activeFilter => {
-    const filterName = activeFilter.textContent.trim();
-    console.log(`Jira Mutually Exclusive Quick Filters: Clearing "${filterName}"`);
-    activeFilter.click();
-  });
-
-  setTimeout(() => {
-    isProcessingClick = false;
-  }, 200);
-}
-
-// Add listeners to Backlog and Active Sprint navigation buttons
-function setupNavigationListeners() {
-  console.log('Jira Mutually Exclusive Quick Filters: Setting up navigation listeners');
-
-  // Find navigation links for Backlog and Active Sprint
-  // Backlog has view=planning in href, Active Sprint has view=detail or no view param
-  const navLinks = document.querySelectorAll('a.aui-nav-item[href*="RapidBoard.jspa"]');
-
-  navLinks.forEach(link => {
-    const href = link.getAttribute('href');
-    const label = link.getAttribute('data-label') || link.textContent.trim();
-
-    // Only add listener once by checking if we already marked it
-    if (link.hasAttribute('data-filter-listener-added')) {
-      return;
-    }
-
-    console.log(`Jira Mutually Exclusive Quick Filters: Adding navigation listener for "${label}"`);
-
-    link.addEventListener('click', () => {
-      console.log(`Jira Mutually Exclusive Quick Filters: Navigation clicked: "${label}"`);
-      clearAllActiveFilters();
-
-      // Mark that we'll need to re-initialize when the new view loads
-      initializedContainers.clear();
-    });
-
-    // Mark this link as having a listener
-    link.setAttribute('data-filter-listener-added', 'true');
-  });
-}
-
 // Handler function for filter button clicks
 async function handleFilterClick(button) {
   // Prevent recursive clicking
@@ -198,12 +147,6 @@ const observer = new MutationObserver((mutations, obs) => {
   // Try to initialize any containers that exist but aren't initialized yet
   // This will automatically handle both sprint and backlog views
   initializeExtension();
-
-  // Also check for navigation links and set up listeners
-  const navLinks = document.querySelectorAll('a.aui-nav-item[href*="RapidBoard.jspa"]');
-  if (navLinks.length > 0) {
-    setupNavigationListeners();
-  }
 });
 
 // Start observing the document for changes (don't disconnect, keep watching for view changes)
@@ -217,6 +160,5 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
   console.log('Jira Mutually Exclusive Quick Filters: Document already loaded, attempting immediate initialization');
   setTimeout(() => {
     initializeExtension();
-    setupNavigationListeners();
   }, 1000);
 }
