@@ -1,129 +1,164 @@
 // Popup script for Jira Exclusive Quick Filters extension
 
+// Constants
+const BUILT_IN_PATTERNS = ['*://*.atlassian.net/*'];
+const DEFAULT_SETTINGS = {
+  mutuallyExclusive: true,
+  customJiraUrls: []
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
-  const toggle = document.getElementById('mutuallyExclusiveToggle');
-  const toastElement = document.getElementById('toast');
-  const customUrlInput = document.getElementById('customUrlInput');
-  const addUrlButton = document.getElementById('addUrlButton');
-  const customUrlsList = document.getElementById('customUrlsList');
-  const noUrlsMessage = document.getElementById('noUrlsMessage');
-  const urlValidationError = document.getElementById('urlValidationError');
+  // DOM element references
+  const elements = {
+    toggle: document.getElementById('mutuallyExclusiveToggle'),
+    toast: document.getElementById('toast'),
+    urlInput: document.getElementById('customUrlInput'),
+    addUrlButton: document.getElementById('addUrlButton'),
+    urlsList: document.getElementById('customUrlsList'),
+    noUrlsMessage: document.getElementById('noUrlsMessage'),
+    urlValidationError: document.getElementById('urlValidationError')
+  };
 
   // Load the current state from storage
-  const result = await chrome.storage.sync.get({
-    mutuallyExclusive: true,
-    customJiraUrls: []
-  });
-  toggle.checked = result.mutuallyExclusive;
+  const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+  elements.toggle.checked = settings.mutuallyExclusive;
 
-  console.log('Popup loaded, mutuallyExclusive:', result.mutuallyExclusive);
-  console.log('Custom Jira URLs:', result.customJiraUrls);
+  console.log('Popup loaded, mutuallyExclusive:', settings.mutuallyExclusive);
+  console.log('Custom Jira URLs:', settings.customJiraUrls);
 
   // Display custom URLs
-  displayCustomUrls(result.customJiraUrls);
-  
-  // Show status message as toast
+  displayCustomUrls(settings.customJiraUrls);
+
+  // Helper: Show status message as toast
   function showStatus(message, type = 'success') {
-    toastElement.textContent = message;
-    toastElement.className = `toast show ${type}`;
-    
+    elements.toast.textContent = message;
+    elements.toast.className = `toast show ${type}`;
+
     setTimeout(() => {
-      toastElement.classList.remove('show');
+      elements.toast.classList.remove('show');
     }, 2000);
   }
 
-  // Validate URL format
+  // Helper: Validate URL format
   function isValidUrl(urlString) {
     try {
       const url = new URL(urlString);
-      // Must be http or https
       return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch (e) {
+    } catch {
       return false;
     }
   }
 
-  // Normalize URL (remove trailing slash, convert to pattern)
+  // Helper: Normalize URL (convert to pattern)
   function normalizeUrl(urlString) {
     try {
       const url = new URL(urlString);
-      // Return base URL with wildcard path
       return `${url.protocol}//${url.host}/*`;
-    } catch (e) {
+    } catch {
       return urlString;
     }
   }
 
+  // Helper: Show/hide validation error
+  function showValidationError(message) {
+    elements.urlValidationError.textContent = message;
+    elements.urlInput.classList.add('error');
+  }
+
+  function clearValidationError() {
+    elements.urlValidationError.textContent = '';
+    elements.urlInput.classList.remove('error');
+  }
+
+  // Helper: Create URL list item
+  function createUrlListItem(url, index) {
+    const li = document.createElement('li');
+    li.className = 'url-item';
+
+    const urlText = document.createElement('span');
+    urlText.className = 'url-text';
+    urlText.textContent = url;
+
+    const removeButton = document.createElement('button');
+    removeButton.className = 'remove-url-button icon-button';
+    removeButton.textContent = '×';
+    removeButton.title = 'Remove URL';
+    removeButton.addEventListener('click', () => removeCustomUrl(index));
+
+    li.appendChild(urlText);
+    li.appendChild(removeButton);
+    return li;
+  }
+
   // Display custom URLs in the list
   function displayCustomUrls(urls) {
-    customUrlsList.innerHTML = '';
+    elements.urlsList.innerHTML = '';
 
     if (urls.length === 0) {
-      noUrlsMessage.classList.remove('hidden');
+      elements.noUrlsMessage.classList.remove('hidden');
     } else {
-      noUrlsMessage.classList.add('hidden');
-
+      elements.noUrlsMessage.classList.add('hidden');
       urls.forEach((url, index) => {
-        const li = document.createElement('li');
-        li.className = 'url-item';
-
-        const urlText = document.createElement('span');
-        urlText.className = 'url-text';
-        urlText.textContent = url;
-
-        const removeButton = document.createElement('button');
-        removeButton.className = 'remove-url-button icon-button';
-        removeButton.textContent = '×';
-        removeButton.title = 'Remove URL';
-        removeButton.addEventListener('click', () => removeCustomUrl(index));
-
-        li.appendChild(urlText);
-        li.appendChild(removeButton);
-        customUrlsList.appendChild(li);
+        elements.urlsList.appendChild(createUrlListItem(url, index));
       });
     }
   }
 
+  // Helper: Request permission for URL
+  async function requestPermissionForUrl(normalizedUrl) {
+    const hasPermission = await chrome.permissions.contains({
+      origins: [normalizedUrl]
+    });
+
+    if (hasPermission) return true;
+
+    // Request permission - popup will likely close during this
+    const granted = await chrome.permissions.request({
+      origins: [normalizedUrl]
+    });
+
+    return granted;
+  }
+
   // Add custom URL
+  // TODO: Known issue - popup closes when permission dialog appears, requiring user to click "Add URL" twice.
+  // First click: shows permission dialog, user grants permission, popup closes.
+  // Second click: permission already exists, URL is saved successfully.
+  // This is a Chrome limitation - popups close when permission dialogs appear.
+  // Potential solutions to explore:
+  // 1. Use chrome.windows.create() for a persistent window instead of popup
+  // 2. Implement pending URL tracking with auto-completion (attempted but introduced bugs)
+  // 3. Show user instruction: "After granting permission, click Add URL again"
   async function addCustomUrl() {
-    const urlInput = customUrlInput.value.trim();
+    const urlInput = elements.urlInput.value.trim();
 
-    // Clear previous error
-    urlValidationError.textContent = '';
-    customUrlInput.classList.remove('error');
+    clearValidationError();
 
+    // Validation
     if (!urlInput) {
-      urlValidationError.textContent = 'Please enter a URL';
-      customUrlInput.classList.add('error');
+      showValidationError('Please enter a URL');
       return;
     }
 
     if (!isValidUrl(urlInput)) {
-      urlValidationError.textContent = 'Invalid URL format. Must start with http:// or https://';
-      customUrlInput.classList.add('error');
+      showValidationError('Invalid URL format. Must start with http:// or https://');
       return;
     }
 
     const normalizedUrl = normalizeUrl(urlInput);
-    const result = await chrome.storage.sync.get({ customJiraUrls: [] });
-    const urls = result.customJiraUrls;
+    const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+    const urls = settings.customJiraUrls;
 
-    // Check for duplicates
     if (urls.includes(normalizedUrl)) {
-      urlValidationError.textContent = 'This URL is already configured';
-      customUrlInput.classList.add('error');
+      showValidationError('This URL is already configured');
       return;
     }
 
-    // Request permission for this URL
     try {
-      const granted = await chrome.permissions.request({
-        origins: [normalizedUrl]
-      });
+      const granted = await requestPermissionForUrl(normalizedUrl);
 
       if (!granted) {
-        urlValidationError.textContent = 'Permission denied. Please try again.';
-        customUrlInput.classList.add('error');
+        showValidationError('Permission denied. Please try again.');
         return;
       }
 
@@ -133,21 +168,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Update display
       displayCustomUrls(urls);
-      customUrlInput.value = '';
+      elements.urlInput.value = '';
       showStatus('✓ Custom URL added', 'success');
 
       console.log('Added custom URL:', normalizedUrl);
     } catch (error) {
-      console.error('Error requesting permission:', error);
-      urlValidationError.textContent = 'Failed to add URL. Please try again.';
-      customUrlInput.classList.add('error');
+      console.error('Error adding URL:', error);
+      showValidationError('Failed to add URL. Please try again.');
     }
   }
 
   // Remove custom URL
   async function removeCustomUrl(index) {
-    const result = await chrome.storage.sync.get({ customJiraUrls: [] });
-    const urls = result.customJiraUrls;
+    const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+    const urls = settings.customJiraUrls;
     const removedUrl = urls[index];
 
     // Remove from array
@@ -160,7 +194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('Removed custom URL:', removedUrl);
 
-    // Optionally remove permission (note: this removes it completely)
+    // Optionally remove permission
     try {
       await chrome.permissions.remove({ origins: [removedUrl] });
     } catch (error) {
@@ -168,61 +202,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Get all Jira URL patterns for tab queries
-  function getAllJiraPatterns() {
-    // Built-in patterns from manifest (only Atlassian Cloud auto-supported)
-    const builtInPatterns = [
-      '*://*.atlassian.net/*'
-    ];
-    return builtInPatterns;
+  // Helper: Get all Jira URL patterns
+  async function getAllJiraPatterns() {
+    const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+    return [...BUILT_IN_PATTERNS, ...settings.customJiraUrls];
   }
 
-  // Add URL button click handler
-  addUrlButton.addEventListener('click', addCustomUrl);
+  // Helper: Notify all Jira tabs about toggle change
+  async function notifyAllJiraTabs(isEnabled) {
+    const allPatterns = await getAllJiraPatterns();
 
-  // Allow Enter key to add URL
-  customUrlInput.addEventListener('keypress', (e) => {
+    for (const pattern of allPatterns) {
+      try {
+        const tabs = await chrome.tabs.query({ url: pattern });
+
+        // Send messages in parallel, ignore failures
+        await Promise.allSettled(
+          tabs.map(tab =>
+            chrome.tabs.sendMessage(tab.id, {
+              action: 'toggleChanged',
+              enabled: isEnabled
+            })
+          )
+        );
+      } catch (error) {
+        console.warn('Could not query tabs for pattern:', pattern, error);
+      }
+    }
+  }
+
+  // Event: Add URL button click handler
+  elements.addUrlButton.addEventListener('click', addCustomUrl);
+
+  // Event: Allow Enter key to add URL
+  elements.urlInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       addCustomUrl();
     }
   });
 
-  // Listen for toggle changes
-  toggle.addEventListener('change', async () => {
-    const isEnabled = toggle.checked;
-    
+  // Event: Listen for toggle changes
+  elements.toggle.addEventListener('change', async () => {
+    const isEnabled = elements.toggle.checked;
+
     // Save to storage
     await chrome.storage.sync.set({ mutuallyExclusive: isEnabled });
-    
+
     console.log('Toggle changed, mutuallyExclusive:', isEnabled);
-    
-    // Show status message as toast
-    if (isEnabled) {
-      showStatus('✓ Exclusive filters enabled', 'success');
-    } else {
-      showStatus('↺ Normal filter behavior restored', 'warning');
-    }
 
-    // Notify all tabs with Jira pages to reload the content script behavior
-    // Query both built-in patterns and custom URLs
-    const patterns = getAllJiraPatterns();
-    const customResult = await chrome.storage.sync.get({ customJiraUrls: [] });
-    const allPatterns = [...patterns, ...customResult.customJiraUrls];
+    // Show status message
+    const message = isEnabled
+      ? '✓ Exclusive filters enabled'
+      : '↺ Normal filter behavior restored';
+    const type = isEnabled ? 'success' : 'warning';
+    showStatus(message, type);
 
-    for (const pattern of allPatterns) {
-      try {
-        const tabs = await chrome.tabs.query({ url: pattern });
-        tabs.forEach(tab => {
-          chrome.tabs.sendMessage(tab.id, {
-            action: 'toggleChanged',
-            enabled: isEnabled
-          }).catch(() => {
-            // Ignore errors for tabs where content script isn't loaded yet
-          });
-        });
-      } catch (error) {
-        console.warn('Could not query tabs for pattern:', pattern, error);
-      }
-    }
+    // Notify all Jira tabs about the change
+    await notifyAllJiraTabs(isEnabled);
   });
 });

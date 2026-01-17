@@ -1,164 +1,254 @@
 // Jira Mutually Exclusive Quick Filters - Content Script
 // Makes quick filters mutually exclusive by auto-deselecting others when one is clicked
 
-console.log('Jira Mutually Exclusive Quick Filters: Content script loaded');
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+const CONFIG = {
+  SELECTORS: {
+    WORK_CONTAINER: 'dl#js-work-quickfilters',
+    PLAN_CONTAINER: 'dl#js-plan-quickfilters',
+    FILTER_BUTTON: '.js-quickfilter-button',
+    ACTIVE_FILTER: '.js-quickfilter-button.ghx-active'
+  },
+  TIMING: {
+    CLICK_DELAY: 100,           // Delay before processing click
+    INIT_DELAY: 1000,           // Initial load delay
+    MUTATION_DEBOUNCE: 250      // Debounce for mutation observer
+  },
+  STORAGE_KEY: 'mutuallyExclusive',
+  DEFAULT_ENABLED: true
+};
 
-// Flag to prevent recursive clicking
-let isProcessingClick = false;
+const LOG_PREFIX = 'Jira Mutually Exclusive Quick Filters:';
 
-// Keep track of initialized containers to avoid duplicate event listeners
-// Store a Set of initialized DOM element references
-let initializedContainers = new Set();
+// ============================================================================
+// STATE MANAGEMENT
+// ============================================================================
+const state = {
+  isProcessingClick: false,
+  initializedContainers: new Set(),
+  isEnabled: CONFIG.DEFAULT_ENABLED
+};
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+// Simple debounce helper
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Logging helper
+const log = {
+  info: (...args) => console.log(LOG_PREFIX, ...args),
+  warn: (...args) => console.warn(LOG_PREFIX, ...args),
+  error: (...args) => console.error(LOG_PREFIX, ...args)
+};
+
+// ============================================================================
+// STORAGE MANAGEMENT
+// ============================================================================
+
+// Load and cache the enabled state
+async function loadEnabledState() {
+  try {
+    if (!chrome?.storage?.sync) {
+      log.warn('chrome.storage not available, using default (enabled)');
+      return CONFIG.DEFAULT_ENABLED;
+    }
+
+    const result = await chrome.storage.sync.get({
+      [CONFIG.STORAGE_KEY]: CONFIG.DEFAULT_ENABLED
+    });
+    state.isEnabled = result[CONFIG.STORAGE_KEY];
+    log.info(`Feature enabled: ${state.isEnabled}`);
+    return state.isEnabled;
+  } catch (error) {
+    log.error('Error reading storage:', error);
+    return CONFIG.DEFAULT_ENABLED;
+  }
+}
+
+// Listen for storage changes to update cached state
+if (chrome?.storage?.onChanged) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'sync' && changes[CONFIG.STORAGE_KEY]) {
+      state.isEnabled = changes[CONFIG.STORAGE_KEY].newValue;
+      log.info(`Feature toggled: ${state.isEnabled}`);
+    }
+  });
+}
+
+// ============================================================================
+// FILTER MANAGEMENT
+// ============================================================================
+
+// Get filter info helper
+function getFilterInfo(button) {
+  return {
+    id: button.getAttribute('data-filter-id'),
+    name: button.textContent.trim()
+  };
+}
+
+// Deselect all active filters except the clicked one
+function deactivateOtherFilters(clickedFilterId) {
+  const activeFilters = document.querySelectorAll(CONFIG.SELECTORS.ACTIVE_FILTER);
+  log.info(`Found ${activeFilters.length} active filters`);
+
+  let deselectedCount = 0;
+  activeFilters.forEach(activeFilter => {
+    const { id, name } = getFilterInfo(activeFilter);
+
+    if (id !== clickedFilterId) {
+      log.info(`Deselecting "${name}" (ID: ${id})`);
+      activeFilter.click();
+      deselectedCount++;
+    }
+  });
+
+  log.info(`Deselected ${deselectedCount} filters`);
+  return deselectedCount;
+}
 
 // Handler function for filter button clicks
 async function handleFilterClick(button) {
   // Prevent recursive clicking
-  if (isProcessingClick) {
-    console.log('Jira Mutually Exclusive Quick Filters: Already processing a click, skipping');
+  if (state.isProcessingClick) {
+    log.info('Already processing a click, skipping');
     return;
   }
 
-  // Check if the mutually exclusive feature is enabled
-  let isEnabled = true; // Default to enabled
-  try {
-    if (chrome && chrome.storage && chrome.storage.sync) {
-      const result = await chrome.storage.sync.get({ mutuallyExclusive: true });
-      isEnabled = result.mutuallyExclusive;
-    } else {
-      console.warn('Jira Mutually Exclusive Quick Filters: chrome.storage not available, using default (enabled)');
-    }
-  } catch (error) {
-    console.error('Jira Mutually Exclusive Quick Filters: Error reading storage:', error);
-    // Default to enabled if there's an error
-  }
-
-  console.log(`Jira Exclusive Quick Filters: Feature enabled: ${isEnabled}`);
-
-  if (!isEnabled) {
-    console.log('Jira Mutually Exclusive Quick Filters: Feature disabled, allowing normal behavior');
+  // Check if feature is enabled
+  if (!state.isEnabled) {
+    log.info('Feature disabled, allowing normal behavior');
     return;
   }
 
-  isProcessingClick = true;
+  state.isProcessingClick = true;
 
   // Small delay to let the current click register first
   setTimeout(() => {
-    const clickedFilterId = button.getAttribute('data-filter-id');
-    const clickedFilterName = button.textContent.trim();
-    console.log(`Jira Exclusive Quick Filters: Processing click on "${clickedFilterName}" (ID: ${clickedFilterId})`);
+    try {
+      const { id, name } = getFilterInfo(button);
+      log.info(`Processing click on "${name}" (ID: ${id})`);
 
-    // Find all currently active filters (works for both sprint and backlog views)
-    const activeFilters = document.querySelectorAll('.js-quickfilter-button.ghx-active');
-    console.log(`Jira Exclusive Quick Filters: Found ${activeFilters.length} active filters`);
-
-    // Deselect all other active filters
-    let deselectedCount = 0;
-    activeFilters.forEach(activeFilter => {
-      const activeFilterId = activeFilter.getAttribute('data-filter-id');
-      const activeFilterName = activeFilter.textContent.trim();
-
-      // Don't deselect the filter we just clicked
-      if (activeFilterId !== clickedFilterId) {
-        console.log(`Jira Exclusive Quick Filters: Deselecting "${activeFilterName}" (ID: ${activeFilterId})`);
-        activeFilter.click();
-        deselectedCount++;
-      }
-    });
-
-    console.log(`Jira Exclusive Quick Filters: Deselected ${deselectedCount} filters`);
-    isProcessingClick = false;
-  }, 100);
+      deactivateOtherFilters(id);
+    } catch (error) {
+      log.error('Error handling filter click:', error);
+    } finally {
+      state.isProcessingClick = false;
+    }
+  }, CONFIG.TIMING.CLICK_DELAY);
 }
 
-// Initialize a single container
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+// Initialize a single container with event delegation
 function initializeContainer(filterContainer) {
   const containerId = filterContainer.id;
 
-  // Check if we already initialized THIS EXACT container element
-  if (initializedContainers.has(filterContainer)) {
-    console.log(`Jira Mutually Exclusive Quick Filters: Container ${containerId} already initialized, skipping`);
+  // Check if already initialized
+  if (state.initializedContainers.has(filterContainer)) {
+    log.info(`Container ${containerId} already initialized, skipping`);
     return false;
   }
 
-  console.log(`Jira Mutually Exclusive Quick Filters: Initializing container ${containerId}`);
+  log.info(`Initializing container ${containerId}`);
 
-  // Get all filter buttons within this specific container
-  const filterButtons = filterContainer.querySelectorAll('.js-quickfilter-button');
-  console.log(`Jira Exclusive Quick Filters: Found ${filterButtons.length} filter buttons in ${containerId}`);
+  // Check for filter buttons
+  const filterButtons = filterContainer.querySelectorAll(CONFIG.SELECTORS.FILTER_BUTTON);
+  log.info(`Found ${filterButtons.length} filter buttons in ${containerId}`);
 
   if (filterButtons.length === 0) {
-    console.log(`Jira Mutually Exclusive Quick Filters: No filter buttons found in ${containerId}`);
+    log.info(`No filter buttons found in ${containerId}`);
     return false;
   }
 
-  // Use event delegation: add ONE listener to the container instead of to each button
-  // This way, even if buttons are recreated, the listener still works
+  // Use event delegation with capture phase
   filterContainer.addEventListener('click', async (e) => {
-    // Check if the clicked element is a filter button
-    const button = e.target.closest('.js-quickfilter-button');
+    const button = e.target.closest(CONFIG.SELECTORS.FILTER_BUTTON);
     if (button) {
-      console.log(`Jira Mutually Exclusive Quick Filters: Filter button clicked via delegation in ${containerId}`);
+      log.info(`Filter button clicked via delegation in ${containerId}`);
       await handleFilterClick(button);
     }
-  }, true); // Use capture phase to run before Jira's handlers
+  }, true);
 
-  // Mark this container element as initialized
-  initializedContainers.add(filterContainer);
-
-  console.log(`Jira Mutually Exclusive Quick Filters: Container ${containerId} initialized successfully with event delegation`);
+  state.initializedContainers.add(filterContainer);
+  log.info(`Container ${containerId} initialized successfully`);
   return true;
 }
 
-// Initialize the extension for all available quick filter containers
+// Initialize all available quick filter containers
 function initializeExtension() {
-  console.log('Jira Mutually Exclusive Quick Filters: Initializing extension');
+  log.info('Initializing extension');
 
   let initializedCount = 0;
 
-  // Try both container types
-  // Sprint board: dl#js-work-quickfilters
-  // Backlog: dl#js-plan-quickfilters
-  const workContainer = document.querySelector('dl#js-work-quickfilters');
-  const planContainer = document.querySelector('dl#js-plan-quickfilters');
+  // Try both container types (Sprint board and Backlog)
+  const containers = [
+    document.querySelector(CONFIG.SELECTORS.WORK_CONTAINER),
+    document.querySelector(CONFIG.SELECTORS.PLAN_CONTAINER)
+  ];
 
-  if (workContainer) {
-    if (initializeContainer(workContainer)) {
+  containers.forEach(container => {
+    if (container && initializeContainer(container)) {
       initializedCount++;
     }
-  }
-
-  if (planContainer) {
-    if (initializeContainer(planContainer)) {
-      initializedCount++;
-    }
-  }
+  });
 
   if (initializedCount === 0) {
-    console.log('Jira Mutually Exclusive Quick Filters: No containers found or all already initialized');
+    log.info('No containers found or all already initialized');
     return false;
   }
 
-  console.log(`Jira Mutually Exclusive Quick Filters: Initialized ${initializedCount} container(s)`);
+  log.info(`Initialized ${initializedCount} container(s)`);
   return true;
 }
 
-// Use MutationObserver to wait for the quick filters to load AND to re-initialize when switching views
-const observer = new MutationObserver((mutations, obs) => {
-  // Try to initialize any containers that exist but aren't initialized yet
-  // This will automatically handle both sprint and backlog views
-  initializeExtension();
+// ============================================================================
+// OBSERVERS & STARTUP
+// ============================================================================
+
+// Debounced initialization for mutation observer
+const debouncedInit = debounce(
+  initializeExtension,
+  CONFIG.TIMING.MUTATION_DEBOUNCE
+);
+
+// Use MutationObserver to handle dynamic content
+const observer = new MutationObserver(() => {
+  debouncedInit();
 });
 
-// Start observing the document for changes (don't disconnect, keep watching for view changes)
+// Start observing
 observer.observe(document.body, {
   childList: true,
   subtree: true
 });
 
-// Also try to initialize immediately in case filters are already loaded
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  console.log('Jira Mutually Exclusive Quick Filters: Document already loaded, attempting immediate initialization');
-  setTimeout(() => {
-    initializeExtension();
-  }, 1000);
-}
+// Initialize on load
+(async function startup() {
+  log.info('Content script loaded');
+
+  // Load enabled state from storage
+  await loadEnabledState();
+
+  // Try immediate initialization if DOM is ready
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    log.info('Document already loaded, attempting immediate initialization');
+    setTimeout(initializeExtension, CONFIG.TIMING.INIT_DELAY);
+  }
+})();
