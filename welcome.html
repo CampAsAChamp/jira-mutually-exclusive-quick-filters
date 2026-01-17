@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Jira Mutually Exclusive Quick Filters</title>
+    <link rel="stylesheet" href="welcome.css">
+</head>
+
+<body>
+    <div class="welcome-container">
+        <!-- Header Section -->
+        <div class="welcome-header">
+            <img src="icons/icon128.png" alt="Extension Icon" class="welcome-icon">
+            <h1>Welcome to Jira Mutually Exclusive Quick Filters!</h1>
+            <p class="tagline">Simplify your Jira workflow by making quick filters mutually exclusive</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="welcome-content">
+            <!-- What it does -->
+            <div class="info-card">
+                <div class="info-icon">✨</div>
+                <h2>What does this extension do?</h2>
+                <p>When you click a quick filter in Jira, this extension automatically deselects all other filters. This
+                    makes it easy to focus on one filter at a time without manually clearing others.</p>
+            </div>
+
+            <!-- Cloud users section -->
+            <div class="info-card success">
+                <div class="info-icon">☁️</div>
+                <h2>Jira Cloud Users - You're All Set!</h2>
+                <p>If you use Jira Cloud (<strong>*.atlassian.net</strong>), the extension is already working. No setup
+                    required!</p>
+            </div>
+
+            <!-- Self-hosted section -->
+            <div class="setup-card">
+                <div class="info-icon">🔧</div>
+                <h2>Work Jira Users</h2>
+                <p>Using Jira Server, Data Center, or a custom instance? Add your Jira URL below to get started.</p>
+
+                <div class="url-setup">
+                    <label for="jiraUrlInput">Your Jira URL:</label>
+                    <div class="url-input-group">
+                        <input type="text" id="jiraUrlInput" placeholder="https://jira.yourcompany.com"
+                            autocomplete="off" spellcheck="false" />
+                        <button id="addUrlButton" class="btn-primary">Add URL</button>
+                    </div>
+                    <div id="urlValidationError" class="validation-error"></div>
+
+                    <!-- Success message after adding URL -->
+                    <div id="successMessage" class="success-message hidden">
+                        <span class="success-icon">✓</span>
+                        <span>URL added successfully! You're all set.</span>
+                    </div>
+                </div>
+
+                <p class="help-note">
+                    <strong>Note:</strong> The extension will request permission to access your Jira instance. This is
+                    required for the extension to work on your custom domain.
+                </p>
+            </div>
+
+            <!-- Bottom actions -->
+            <div class="actions">
+                <button id="skipButton" class="btn-secondary">Skip for Now</button>
+                <button id="getStartedButton" class="btn-primary">Get Started</button>
+            </div>
+
+            <!-- Additional help -->
+            <div class="footer-note">
+                <p>You can always add custom URLs later by clicking the extension icon in your browser toolbar.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="welcome.js"></script>
+</body>
+
+</html>
