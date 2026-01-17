@@ -11,7 +11,7 @@
   "host_permissions": [
     "*://*.atlassian.net/*",
     "*://*/jira/*",
-    "*://jira.*/*"
+    "*://jira.*.*/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -31,7 +31,7 @@
       "matches": [
         "*://*.atlassian.net/*",
         "*://*/jira/*",
-        "*://jira.*/*"
+        "*://jira.*.*/*"
       ],
       "js": [
         "content.js"
