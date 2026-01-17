@@ -9,9 +9,6 @@
     "activeTab"
   ],
   "host_permissions": [
-    "*://*.atlassian.net/*"
-  ],
-  "optional_host_permissions": [
     "<all_urls>"
   ],
   "action": {
@@ -30,7 +27,7 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*.atlassian.net/*"
+        "<all_urls>"
       ],
       "js": [
         "content.js"

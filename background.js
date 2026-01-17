@@ -3,14 +3,7 @@
 console.log('Jira Mutually Exclusive Quick Filters: Background service worker started');
 
 // Constants
-const BUILT_IN_PATTERNS = ['*://*.atlassian.net/*'];
 const CONTENT_SCRIPT_FILE = 'content.js';
-
-// Helper: Get all URL patterns (built-in + custom)
-async function getAllUrlPatterns() {
-  const result = await chrome.storage.sync.get({ customJiraUrls: [] });
-  return [...BUILT_IN_PATTERNS, ...result.customJiraUrls];
-}
 
 // Helper: Check if content script is active in a tab
 async function isContentScriptActive(tabId) {
@@ -49,17 +42,15 @@ async function processTab(tab) {
   return await injectContentScript(tab.id, tab.url);
 }
 
-// Main function: Inject content script into tabs matching URL patterns
-async function injectContentScriptIntoMatchingTabs(patterns) {
-  console.log('Injecting content scripts for patterns:', patterns);
-  
-  for (const pattern of patterns) {
-    try {
-      const tabs = await chrome.tabs.query({ url: pattern });
-      await Promise.all(tabs.map(processTab));
-    } catch (error) {
-      console.warn(`Error processing pattern ${pattern}:`, error);
-    }
+// Main function: Inject content script into all tabs
+async function injectContentScriptIntoAllTabs() {
+  console.log('Injecting content scripts into all tabs');
+
+  try {
+    const tabs = await chrome.tabs.query({});
+    await Promise.all(tabs.map(processTab));
+  } catch (error) {
+    console.warn('Error injecting content scripts:', error);
   }
 }
 
@@ -70,20 +61,14 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
     // Set default values on first install
     await chrome.storage.sync.set({ 
-      mutuallyExclusive: true,
-      customJiraUrls: [],
-      welcomeShown: false
+      mutuallyExclusive: true
     });
     console.log('Jira Mutually Exclusive Quick Filters: Default settings initialized');
-    
-    // Open welcome page on first install
-    chrome.tabs.create({ url: 'welcome.html' });
   }
   
-  // On install or update, inject content script into existing Jira tabs
+  // On install or update, inject content script into existing tabs
   if (details.reason === 'install' || details.reason === 'update') {
-    const patterns = await getAllUrlPatterns();
-    await injectContentScriptIntoMatchingTabs(patterns);
+    await injectContentScriptIntoAllTabs();
   }
 });
 
@@ -98,17 +83,6 @@ function updateBadge(isEnabled) {
   }
 }
 
-// Helper: Convert URL pattern to regex
-function patternToRegex(pattern) {
-  const escaped = pattern.replace(/\*/g, '.*').replace(/\//g, '\\/');
-  return new RegExp(`^${escaped}$`);
-}
-
-// Helper: Check if URL matches any pattern
-function matchesAnyPattern(url, patterns) {
-  return patterns.some(pattern => patternToRegex(pattern).test(url));
-}
-
 // Listen for storage changes
 chrome.storage.onChanged.addListener(async (changes, areaName) => {
   if (areaName !== 'sync') return;
@@ -118,17 +92,6 @@ chrome.storage.onChanged.addListener(async (changes, areaName) => {
     const { oldValue, newValue } = changes.mutuallyExclusive;
     console.log(`Jira Exclusive Quick Filters: Setting changed from ${oldValue} to ${newValue}`);
     updateBadge(newValue);
-  }
-  
-  // Handle custom URL changes
-  if (changes.customJiraUrls) {
-    const oldUrls = changes.customJiraUrls.oldValue || [];
-    const newUrls = changes.customJiraUrls.newValue || [];
-    
-    console.log('Custom URLs changed from', oldUrls, 'to', newUrls);
-    
-    // Inject content script into tabs with new URLs
-    await injectContentScriptIntoMatchingTabs(newUrls);
   }
 });
 
@@ -141,16 +104,11 @@ chrome.storage.sync.get({ mutuallyExclusive: true }, (result) => {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // Only proceed when the page has finished loading
   if (changeInfo.status !== 'complete' || !tab.url) return;
-  
-  const patterns = await getAllUrlPatterns();
-  
-  // Check if the tab URL matches any pattern
-  if (matchesAnyPattern(tab.url, patterns)) {
-    const isActive = await isContentScriptActive(tabId);
-    
-    if (!isActive) {
-      console.log(`Auto-injecting content script into new tab ${tabId} (${tab.url})`);
-      await injectContentScript(tabId, tab.url);
-    }
+
+  const isActive = await isContentScriptActive(tabId);
+
+  if (!isActive) {
+    console.log(`Auto-injecting content script into tab ${tabId} (${tab.url})`);
+    await injectContentScript(tabId, tab.url);
   }
 });
