@@ -2,6 +2,14 @@
 // Makes quick filters mutually exclusive by auto-deselecting others when one is clicked
 
 // ============================================================================
+// GUARD AGAINST DOUBLE INJECTION
+// ============================================================================
+if (window.jiraExclusiveFiltersInjected) {
+  console.log('Jira Exclusive Filters: Already injected, skipping');
+} else {
+  window.jiraExclusiveFiltersInjected = true;
+
+// ============================================================================
 // CONSTANTS
 // ============================================================================
 const DEBUG = false; // Set to true for verbose logging
@@ -254,3 +262,5 @@ observer.observe(document.body, {
     setTimeout(initializeExtension, CONFIG.TIMING.INIT_DELAY);
   }
 })();
+
+} // End of injection guard
