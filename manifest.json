@@ -9,7 +9,9 @@
     "activeTab"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "*://*.atlassian.net/*",
+    "*://*/jira/*",
+    "*://jira.*/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -27,7 +29,9 @@
   "content_scripts": [
     {
       "matches": [
-        "<all_urls>"
+        "*://*.atlassian.net/*",
+        "*://*/jira/*",
+        "*://jira.*/*"
       ],
       "js": [
         "content.js"

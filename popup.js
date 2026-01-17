@@ -19,8 +19,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
   elements.toggle.checked = settings.mutuallyExclusive;
 
-  console.log('[Popup] Loaded, mutuallyExclusive:', settings.mutuallyExclusive);
-
   // Helper: Show status message as toast
   function showStatus(message, type = 'success') {
     // Clear any existing timeout to prevent timing conflicts
@@ -79,8 +77,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Save to storage
     await chrome.storage.sync.set({ mutuallyExclusive: isEnabled });
-
-    console.log('[Popup] Toggle changed, mutuallyExclusive:', isEnabled);
 
     // Show status message
     const message = isEnabled

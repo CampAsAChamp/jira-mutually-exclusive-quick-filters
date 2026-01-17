@@ -1,7 +1,5 @@
 // Background service worker for Jira Mutually Exclusive Quick Filters extension
 
-console.log('Jira Mutually Exclusive Quick Filters: Background service worker started');
-
 // Constants
 const CONTENT_SCRIPT_FILE = 'content.js';
 
@@ -22,7 +20,6 @@ async function injectContentScript(tabId, tabUrl) {
       target: { tabId },
       files: [CONTENT_SCRIPT_FILE]
     });
-    console.log(`Injected content script into tab ${tabId} (${tabUrl})`);
     return true;
   } catch (error) {
     console.warn(`Failed to inject content script into tab ${tabId}:`, error);
@@ -35,17 +32,14 @@ async function processTab(tab) {
   const isActive = await isContentScriptActive(tab.id);
   
   if (isActive) {
-    console.log(`Content script already active in tab ${tab.id}`);
     return false;
   }
   
   return await injectContentScript(tab.id, tab.url);
 }
 
-// Main function: Inject content script into all tabs
+// Main function: Inject content script into matching Jira tabs
 async function injectContentScriptIntoAllTabs() {
-  console.log('Injecting content scripts into all tabs');
-
   try {
     const tabs = await chrome.tabs.query({});
     await Promise.all(tabs.map(processTab));
@@ -56,17 +50,14 @@ async function injectContentScriptIntoAllTabs() {
 
 // Initialize default settings when extension is installed
 chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log('Jira Mutually Exclusive Quick Filters: Extension installed/updated', details.reason);
-  
   if (details.reason === 'install') {
     // Set default values on first install
     await chrome.storage.sync.set({ 
       mutuallyExclusive: true
     });
-    console.log('Jira Mutually Exclusive Quick Filters: Default settings initialized');
   }
   
-  // On install or update, inject content script into existing tabs
+  // On install or update, inject content script into existing Jira tabs
   if (details.reason === 'install' || details.reason === 'update') {
     await injectContentScriptIntoAllTabs();
   }
@@ -89,8 +80,7 @@ chrome.storage.onChanged.addListener(async (changes, areaName) => {
   
   // Handle mutuallyExclusive toggle changes
   if (changes.mutuallyExclusive) {
-    const { oldValue, newValue } = changes.mutuallyExclusive;
-    console.log(`Jira Exclusive Quick Filters: Setting changed from ${oldValue} to ${newValue}`);
+    const { newValue } = changes.mutuallyExclusive;
     updateBadge(newValue);
   }
 });
@@ -108,7 +98,6 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   const isActive = await isContentScriptActive(tabId);
 
   if (!isActive) {
-    console.log(`Auto-injecting content script into tab ${tabId} (${tab.url})`);
     await injectContentScript(tabId, tab.url);
   }
 });

@@ -4,6 +4,8 @@
 // ============================================================================
 // CONSTANTS
 // ============================================================================
+const DEBUG = false; // Set to true for verbose logging
+
 const CONFIG = {
   SELECTORS: {
     WORK_CONTAINER: 'dl#js-work-quickfilters',
@@ -50,7 +52,7 @@ function debounce(func, wait) {
 
 // Logging helper
 const log = {
-  info: (...args) => console.log(LOG_PREFIX, ...args),
+  info: (...args) => DEBUG && console.log(LOG_PREFIX, ...args),
   warn: (...args) => console.warn(LOG_PREFIX, ...args),
   error: (...args) => console.error(LOG_PREFIX, ...args)
 };
